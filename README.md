@@ -6,3 +6,4 @@ it's simple example at [snake game](https://en.wikipedia.org/wiki/Snake_(video_g
 i use golang(back) and HTML5+JavaScript(vanilla)(front).
 
 i can create all logic on JS, but it's not fun.
+
