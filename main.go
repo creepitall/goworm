@@ -9,13 +9,19 @@ import (
 )
 
 type position struct {
-	PositionName string `json:"position"`
+	SideName string `json:"position"`
 }
 
+// TODO way name
 type positionPoint struct {
-	X           int         `json:"x"`
-	Y           int         `json:"y"`
-	MapSettings mapSettings `json:"mapSettings"`
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type snakeData struct {
+	PointData   []positionPoint `json:"positionPoint"`
+	Length      int             `json:"length"`
+	MapSettings mapSettings     `json:"mapSettings"`
 }
 
 type mapSettings struct {
@@ -32,35 +38,41 @@ type gameSettings struct {
 }
 
 var (
-	CurrentPosition     positionPoint
+	CurrentSnake        snakeData
 	CurrentMapSettings  mapSettings
 	CurrentGameSettings gameSettings
 	CurrentWay          string
+	NewWay              string
 	stopChan            chan bool = make(chan bool)
 )
 
 func main() {
-	CurrentPosition = positionPoint{
-		X: 1,
-		Y: 1,
-	}
+	var curPos []positionPoint
+	curPos = append(curPos, positionPoint{
+		X: 0,
+		Y: 0,
+	})
 
 	CurrentMapSettings = mapSettings{
 		MaxX: 640,
 		MaxY: 480,
-		ObjX: 10,
-		ObjY: 10,
+		ObjX: 40,
+		ObjY: 40,
+	}
+
+	CurrentSnake = snakeData{
+		PointData:   curPos,
+		Length:      1,
+		MapSettings: CurrentMapSettings,
 	}
 
 	CurrentWay = "right"
 
 	router := gin.Default()
 	router.Use(cors.Default())
-	router.LoadHTMLGlob("web/templates/**/*")
 
-	router.GET("/", getIndex)
-	router.POST("/move", postMove)
 	router.GET("/currentPosition", getCurrentPosition)
+	router.GET("/addTail", postAddTail)
 	router.POST("/currentWay", changeWay)
 	//router.GET("/chunk", postChunk)
 	router.POST("/changeGameSettings", postChangeGameSettings)
@@ -68,8 +80,10 @@ func main() {
 	router.Run("localhost:8080")
 }
 
-func getIndex(c *gin.Context) {
-	c.HTML(http.StatusOK, "index", gin.H{})
+func postAddTail(c *gin.Context) {
+	go CurrentSnake.changeLength()
+
+	c.IndentedJSON(http.StatusOK, CurrentSnake)
 }
 
 func postChangeGameSettings(c *gin.Context) {
@@ -100,7 +114,7 @@ func Run() {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				CurrentPosition = move(CurrentWay)
+				CurrentSnake.changePosition()
 			}
 		}
 	}()
@@ -111,7 +125,7 @@ func Stop() {
 }
 
 func getCurrentPosition(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, CurrentPosition)
+	c.IndentedJSON(http.StatusOK, CurrentSnake)
 }
 
 func changeWay(c *gin.Context) {
@@ -121,28 +135,65 @@ func changeWay(c *gin.Context) {
 		return
 	}
 
-	CurrentWay = newPosition.PositionName
+	NewWay = newPosition.SideName
 
 	c.IndentedJSON(http.StatusOK, CurrentWay)
 }
 
-func postMove(c *gin.Context) {
-	var newPosition position
-
-	if err := c.BindJSON(&newPosition); err != nil {
-		return
+func (s *snakeData) changePosition() {
+	var wayName string
+	var newPointData []positionPoint
+	for _, value := range s.PointData {
+		wayName = value.changePoint(CurrentWay, NewWay)
+		newPointData = append(newPointData, value)
 	}
+	s.PointData = newPointData
 
-	CurrentPosition = move(newPosition.PositionName)
-
-	c.IndentedJSON(http.StatusOK, CurrentPosition)
+	CurrentWay = wayName
 }
 
-func move(position string) positionPoint {
-	curPositionX := CurrentPosition.X
-	curPositionY := CurrentPosition.Y
+func (s *snakeData) changeLength() {
+	currLen := s.Length
+	s.Length++
 
-	switch position {
+	headX := s.PointData[currLen-1].X
+	headY := s.PointData[currLen-1].Y
+
+	var newPoint positionPoint
+	newPoint.addTail(headX, headY)
+	s.PointData = append(s.PointData, newPoint)
+}
+
+func (p *positionPoint) addTail(headX, headY int) {
+	switch CurrentWay {
+	case "right":
+		p.X = headX - 1
+		p.Y = headY
+	case "left":
+		p.X = headX + 1
+		p.Y = headY
+	case "up":
+		p.X = headX
+		p.Y = headY + 1
+	case "down":
+		p.X = headX
+		p.Y = headY - 1
+
+	default:
+		p.X = headX
+		p.Y = headY
+	}
+}
+
+func (p *positionPoint) changePoint(currentSideName, newSideName string) (wayName string) {
+	curPositionX := p.X
+	curPositionY := p.Y
+
+	if newSideName == "" {
+		newSideName = currentSideName
+	}
+
+	switch newSideName {
 	case "right":
 		if (curPositionX+1)*CurrentMapSettings.ObjX < CurrentMapSettings.MaxX {
 			curPositionX = curPositionX + 1
@@ -168,9 +219,8 @@ func move(position string) positionPoint {
 		curPositionY = 0
 	}
 
-	return positionPoint{
-		X:           curPositionX,
-		Y:           curPositionY,
-		MapSettings: CurrentMapSettings,
-	}
+	p.X = curPositionX
+	p.Y = curPositionY
+
+	return
 }
