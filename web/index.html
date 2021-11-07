@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+     
+        <title> hello </title>
+    
+        <style>
+            html, body {
+                height: 100%;
+            }
+            html {
+                display: table;
+                margin: auto;
+            }
+            body {
+                display: table-cell;
+                vertical-align: middle;
+            }
+        </style>
+    
+        <script>   
+
+            var TimerId 
+            // function postPosition(positionName = '') {
+            //   postData = {
+            //     "position": positionName
+            //   }
+            //   fetch("http://localhost:8080/move", {
+            //     method: 'post',
+            //     body: JSON.stringify(postData)
+            //   })
+            //   .then(function (response) {
+            //     return response.json()
+            //   })
+            //   .then(function (data) {
+            //     console.log('data', data)
+            //     ctx.fillStyle = "green";
+            //     ctx.clearRect(0, 0, 
+            //                  data.mapSettings.maxX, 
+            //                  data.mapSettings.maxY)
+            //     ctx.fillRect(data.x * data.mapSettings.objX, 
+            //                  data.y * data.mapSettings.objY, 
+            //                  data.mapSettings.objX, 
+            //                  data.mapSettings.objY)
+            //   });
+            // }
+
+            function postPosition(positionName = '') {
+              postData = {
+                "position": positionName
+              }
+              fetch("http://localhost:8080/currentWay", {
+                method: 'post',
+                body: JSON.stringify(postData)
+              });
+            }
+
+            function changeGameSettings(postData = {}) {
+              fetch("http://localhost:8080/changeGameSettings", {
+                method: 'post',
+                body: JSON.stringify(postData)
+              });
+            }
+
+            function startGame() {
+                postData = {
+                    "gameStart": true,
+                    "gameReset": false
+                }
+                changeGameSettings(postData)
+                TimerId = setInterval(() => getCurrentPosition(), 2000);
+            }
+
+            function stopGame() {
+                postData = {
+                    "gameStart": false,
+                    "gameReset": false
+                }
+                changeGameSettings(postData)
+                clearTimeout(TimerId);
+            }
+
+            function getCurrentPosition() {
+                fetch("http://localhost:8080/currentPosition", {
+                    method: 'get',
+                })
+                .then(function (response) {
+                    return response.json()
+                })
+                .then(function (data) {
+                    console.log('data', data)
+                    ctx.fillStyle = "green";
+                    ctx.clearRect(0, 0, 
+                                data.mapSettings.maxX, 
+                                data.mapSettings.maxY)
+                    ctx.fillRect(data.x * data.mapSettings.objX, 
+                                data.y * data.mapSettings.objY, 
+                                data.mapSettings.objX, 
+                                data.mapSettings.objY)
+                });
+            }        
+        </script>
+    </head>
+    <body>     
+        <div>
+            <button onclick="startGame()"> start </button>
+            <button onclick="stopGame()"> stop </button>
+        </div> 
+        
+        <div>
+            <canvas id="myCanvas" 
+                width="640"
+                height="480"
+                style="border: 1px solid black;">
+            </canvas>
+
+            <script>
+                var c = document.getElementById("myCanvas");
+                var ctx = c.getContext("2d");
+            </script> 
+
+            <div class="container">
+                <button onclick="postPosition('up')"> Up </button>  
+                <button onclick="postPosition('down')"> Down </button>  
+                <button onclick="postPosition('left')"> Left </button>  
+                <button onclick="postPosition('right')"> Right </button> 
+            </div> 
+        </div> 
+    </body>
+</html>
