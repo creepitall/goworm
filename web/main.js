@@ -1,6 +1,7 @@
 const SERVER_PATH = "http://localhost:8080"
 
-var TimerId 
+var GameTimerId 
+var ChunkTimerId
 
 var c = document.getElementById("myCanvas");
 var ctx = c.getContext("2d");
@@ -45,14 +46,20 @@ function changeGameSettings(postData = {}) {
     });
 }
 
+function stopAllTimers() {
+    clearTimeout(GameTimerId);
+    clearTimeout(ChunkTimerId);
+}
+
 function startGame() {
-    clearTimeout(TimerId);
+    stopAllTimers()
     postData = {
         "gameStart": true,
         "gameReset": false
     }
     changeGameSettings(postData)
-    TimerId = setInterval(() => getCurrentPosition(), 1000);
+    GameTimerId = setInterval(() => getCurrentPosition(), 500);
+    ChunkTimerId = setInterval(() => requestChunk(), 7000);
 }
 
 function stopGame() {
@@ -61,7 +68,7 @@ function stopGame() {
         "gameReset": false
     }
     changeGameSettings(postData)
-    clearTimeout(TimerId);
+    stopAllTimers()
 }
 
 function resetGame() {
@@ -73,7 +80,13 @@ function resetGame() {
     ctx.clearRect(0, 0, 
         MapSettings.maxX, 
         MapSettings.maxY)
-    clearTimeout(TimerId);
+    stopAllTimers()
+}
+
+function requestChunk() {
+    fetch(SERVER_PATH + "/requestChunk", {
+        method: 'get',
+    })
 }
 
 function getCurrentPosition() {
@@ -87,19 +100,28 @@ function getCurrentPosition() {
         console.log('data', data)
         if (data.Death == true) {
             ctx.fillStyle = "red";
-            clearTimeout(TimerId);
+            stopAllTimers()
         } else {
             ctx.fillStyle = "green";
         }
         ctx.clearRect(0, 0, 
                     MapSettings.maxX, 
                     MapSettings.maxY)
+        ctx.beginPath();              
         for (let i = 0; i < data.positionPoint.length; i++) {
             ctx.fillRect(data.positionPoint[i].x * MapSettings.objX, 
                          data.positionPoint[i].y * MapSettings.objY, 
                          MapSettings.objX, 
                          MapSettings.objY)
         }
+        ctx.closePath();
+        ctx.fillStyle = "blue";
+        for (let i = 0; i < data.chunkPoint.length; i++) {         
+            ctx.fillRect(data.chunkPoint[i].x * MapSettings.objX, 
+                         data.chunkPoint[i].y * MapSettings.objY, 
+                         MapSettings.objX, 
+                         MapSettings.objY)              
+        }    
     });
 }       
 

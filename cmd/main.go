@@ -1,7 +1,9 @@
 package main
 
 import (
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -22,6 +24,7 @@ type snakeData struct {
 	PointData []positionPoint `json:"positionPoint"`
 	Length    int             `json:"length"`
 	Death     bool            `json:"Death"`
+	Chunk     []positionPoint `json:"chunkPoint"`
 }
 
 type mapSettings struct {
@@ -35,6 +38,7 @@ type mapSettings struct {
 type gameSettings struct {
 	GameStart   bool        `json:"gameStart"`
 	GameReset   bool        `json:"gameReset"`
+	ChunkToDeth int         `json:"chunkToDeth"`
 	MapSettings mapSettings `json:"mapSettings"`
 }
 
@@ -52,18 +56,59 @@ func main() {
 	router.Use(cors.Default())
 
 	router.GET("/currentPosition", getCurrentPosition)
-	router.GET("/addTail", postAddTail)
+	router.GET("/requestChunk", getRequestChunk)
 	router.POST("/currentWay", changeWay)
-	//router.GET("/chunk", postChunk)
 	router.POST("/changeGameSettings", postChangeGameSettings)
 
 	router.Run("localhost:8080")
 }
 
-func postAddTail(c *gin.Context) {
-	go CurrentSnake.changeLength()
+func getRequestChunk(c *gin.Context) {
+	//go CurrentSnake.changeLength()
+	CurrentSnake.getChunk()
 
 	c.IndentedJSON(http.StatusOK, CurrentSnake)
+}
+
+func (s *snakeData) getChunk() {
+	mx := CurrentMapSettings.MaxX/CurrentMapSettings.ObjX - 1
+	my := CurrentMapSettings.MaxY/CurrentMapSettings.ObjY - 1
+
+	var exit bool
+	var pp positionPoint
+	for {
+		x, y := Shuffle(mx, my)
+		pp = positionPoint{
+			X: x,
+			Y: y,
+		}
+		for _, value := range s.PointData {
+			if value.X != pp.X && value.Y != pp.Y {
+				exit = true
+				break
+			}
+		}
+		if exit {
+			break
+		}
+	}
+
+	s.Chunk = append(s.Chunk, positionPoint{
+		X: pp.X,
+		Y: pp.Y,
+	})
+}
+
+func Shuffle(maxx, maxy int) (x, y int) {
+	rand.Seed(time.Now().UTC().UnixNano())
+	vlX := randInt(1, maxx)
+	vlY := randInt(1, maxy)
+
+	return vlX, vlY
+}
+
+func randInt(min int, max int) int {
+	return min + rand.Intn(max-min)
 }
 
 func initSettings() {
@@ -84,6 +129,7 @@ func initSettings() {
 	CurrentGameSettings = gameSettings{
 		GameStart:   false,
 		GameReset:   false,
+		ChunkToDeth: 5,
 		MapSettings: CurrentMapSettings,
 	}
 
@@ -91,6 +137,7 @@ func initSettings() {
 		PointData: curPos,
 		Length:    1,
 		Death:     false,
+		Chunk:     make([]positionPoint, 0),
 	}
 
 	CurrentWay = "right"
@@ -135,10 +182,23 @@ func changeWay(c *gin.Context) {
 
 func (s *snakeData) actualStatus() {
 	var headX, headY int
+
+	if len(s.Chunk) > CurrentGameSettings.ChunkToDeth {
+		s.Death = true
+	}
+
 	for id, value := range s.PointData {
 		if id == 0 {
 			headX = value.X
 			headY = value.Y
+			for idCh, ch := range s.Chunk {
+				if ch.X == headX && ch.Y == headY {
+					go s.changeLength()
+					s.Chunk[idCh] = s.Chunk[len(s.Chunk)-1]
+					s.Chunk = s.Chunk[:len(s.Chunk)-1]
+					break
+				}
+			}
 		} else {
 			if headX == value.X && headY == value.Y {
 				s.Death = true
