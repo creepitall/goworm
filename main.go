@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -14,8 +13,9 @@ type position struct {
 
 // TODO way name
 type positionPoint struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X        int    `json:"x"`
+	Y        int    `json:"y"`
+	SideName string `json:"sideName"`
 }
 
 type snakeData struct {
@@ -42,31 +42,10 @@ var (
 	CurrentMapSettings  mapSettings
 	CurrentGameSettings gameSettings
 	CurrentWay          string
-	NewWay              string
-	stopChan            chan bool = make(chan bool)
 )
 
 func main() {
-	var curPos []positionPoint
-	curPos = append(curPos, positionPoint{
-		X: 0,
-		Y: 0,
-	})
-
-	CurrentMapSettings = mapSettings{
-		MaxX: 640,
-		MaxY: 480,
-		ObjX: 40,
-		ObjY: 40,
-	}
-
-	CurrentSnake = snakeData{
-		PointData:   curPos,
-		Length:      1,
-		MapSettings: CurrentMapSettings,
-	}
-
-	CurrentWay = "right"
+	initSettings()
 
 	router := gin.Default()
 	router.Use(cors.Default())
@@ -86,45 +65,49 @@ func postAddTail(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, CurrentSnake)
 }
 
+func initSettings() {
+	var curPos []positionPoint
+	curPos = append(curPos, positionPoint{
+		X:        0,
+		Y:        0,
+		SideName: "right",
+	})
+
+	CurrentMapSettings = mapSettings{
+		MaxX: 640,
+		MaxY: 480,
+		ObjX: 40,
+		ObjY: 40,
+	}
+
+	CurrentSnake = snakeData{
+		PointData:   curPos,
+		Length:      1,
+		MapSettings: CurrentMapSettings,
+	}
+
+	CurrentWay = "right"
+}
+
 func postChangeGameSettings(c *gin.Context) {
 	var reqGameSettings gameSettings
 	if err := c.BindJSON(&reqGameSettings); err != nil {
 		return
 	}
 
-	if !CurrentGameSettings.GameStart && reqGameSettings.GameStart {
-		go Run()
-	}
-
-	if !reqGameSettings.GameStart {
-		Stop()
-	}
-
 	CurrentGameSettings.GameStart = reqGameSettings.GameStart
+
+	if reqGameSettings.GameReset {
+		initSettings()
+	}
 
 	c.IndentedJSON(http.StatusOK, CurrentGameSettings)
 }
 
-func Run() {
-	go func() {
-		ticker := time.NewTicker(2 * time.Second)
-		for {
-			select {
-			case <-stopChan:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				CurrentSnake.changePosition()
-			}
-		}
-	}()
-}
-
-func Stop() {
-	stopChan <- true
-}
-
 func getCurrentPosition(c *gin.Context) {
+	if CurrentGameSettings.GameStart {
+		CurrentSnake.changePosition()
+	}
 	c.IndentedJSON(http.StatusOK, CurrentSnake)
 }
 
@@ -135,65 +118,70 @@ func changeWay(c *gin.Context) {
 		return
 	}
 
-	NewWay = newPosition.SideName
+	CurrentWay = newPosition.SideName
 
 	c.IndentedJSON(http.StatusOK, CurrentWay)
 }
 
 func (s *snakeData) changePosition() {
-	var wayName string
 	var newPointData []positionPoint
+	isFirst := true
+	var a, b positionPoint
 	for _, value := range s.PointData {
-		wayName = value.changePoint(CurrentWay, NewWay)
-		newPointData = append(newPointData, value)
-	}
-	s.PointData = newPointData
+		a, b = b, value
+		if isFirst {
+			value.changePoint()
 
-	CurrentWay = wayName
+			newPointData = append(newPointData, value)
+			isFirst = false
+		} else {
+			newPointData = append(newPointData, a)
+		}
+	}
+
+	s.PointData = newPointData
 }
 
 func (s *snakeData) changeLength() {
 	currLen := s.Length
 	s.Length++
 
-	headX := s.PointData[currLen-1].X
-	headY := s.PointData[currLen-1].Y
+	tailX := s.PointData[currLen-1].X
+	tailY := s.PointData[currLen-1].Y
+	tailSide := s.PointData[currLen-1].SideName
 
 	var newPoint positionPoint
-	newPoint.addTail(headX, headY)
+	newPoint.addTail(tailX, tailY, tailSide)
 	s.PointData = append(s.PointData, newPoint)
 }
 
-func (p *positionPoint) addTail(headX, headY int) {
-	switch CurrentWay {
+func (p *positionPoint) addTail(tailX, tailY int, tailSideName string) {
+	switch tailSideName {
 	case "right":
-		p.X = headX - 1
-		p.Y = headY
+		p.X = tailX - 1
+		p.Y = tailY
 	case "left":
-		p.X = headX + 1
-		p.Y = headY
+		p.X = tailX + 1
+		p.Y = tailY
 	case "up":
-		p.X = headX
-		p.Y = headY + 1
+		p.X = tailX
+		p.Y = tailY + 1
 	case "down":
-		p.X = headX
-		p.Y = headY - 1
+		p.X = tailX
+		p.Y = tailY - 1
 
 	default:
-		p.X = headX
-		p.Y = headY
+		p.X = tailX
+		p.Y = tailY
 	}
+	p.SideName = tailSideName
 }
 
-func (p *positionPoint) changePoint(currentSideName, newSideName string) (wayName string) {
+func (p *positionPoint) changePoint() {
 	curPositionX := p.X
 	curPositionY := p.Y
 
-	if newSideName == "" {
-		newSideName = currentSideName
-	}
-
-	switch newSideName {
+	switch CurrentWay {
 	case "right":
 		if (curPositionX+1)*CurrentMapSettings.ObjX < CurrentMapSettings.MaxX {
 			curPositionX = curPositionX + 1
@@ -221,6 +209,5 @@ func (p *positionPoint) changePoint(currentSideName, newSideName string) (wayNam
 
 	p.X = curPositionX
 	p.Y = curPositionY
-
-	return
+	p.SideName = CurrentWay
 }

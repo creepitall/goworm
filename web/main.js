@@ -29,18 +29,28 @@ function changeGameSettings(postData = {}) {
 }
 
 function startGame() {
+    clearTimeout(TimerId);
     postData = {
         "gameStart": true,
         "gameReset": false
     }
     changeGameSettings(postData)
-    TimerId = setInterval(() => getCurrentPosition(), 2000);
+    TimerId = setInterval(() => getCurrentPosition(), 1000);
 }
 
 function stopGame() {
     postData = {
         "gameStart": false,
         "gameReset": false
+    }
+    changeGameSettings(postData)
+    clearTimeout(TimerId);
+}
+
+function resetGame() {
+    postData = {
+        "gameStart": false,
+        "gameReset": true
     }
     changeGameSettings(postData)
     clearTimeout(TimerId);
@@ -67,3 +77,22 @@ function getCurrentPosition() {
         }
     });
 }       
+
+function moveRect(e){
+    switch(e.key){  
+        case "ArrowLeft":  // если нажата клавиша влево
+            postPosition('left')
+            break;
+        case "ArrowUp":   // если нажата клавиша вверх
+            postPosition('up')
+            break;
+        case "ArrowRight":   // если нажата клавиша вправо
+            postPosition('right')
+            break;
+        case "ArrowDown":   // если нажата клавиша вниз
+            postPosition('down')
+            break;
+    }
+}
+ 
+addEventListener("keydown", moveRect);
