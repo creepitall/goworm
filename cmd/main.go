@@ -19,9 +19,9 @@ type positionPoint struct {
 }
 
 type snakeData struct {
-	PointData   []positionPoint `json:"positionPoint"`
-	Length      int             `json:"length"`
-	MapSettings mapSettings     `json:"mapSettings"`
+	PointData []positionPoint `json:"positionPoint"`
+	Length    int             `json:"length"`
+	Death     bool            `json:"Death"`
 }
 
 type mapSettings struct {
@@ -33,8 +33,9 @@ type mapSettings struct {
 }
 
 type gameSettings struct {
-	GameStart bool `json:"gameStart"`
-	GameReset bool `json:"gameReset"`
+	GameStart   bool        `json:"gameStart"`
+	GameReset   bool        `json:"gameReset"`
+	MapSettings mapSettings `json:"mapSettings"`
 }
 
 var (
@@ -80,10 +81,16 @@ func initSettings() {
 		ObjY: 40,
 	}
 
-	CurrentSnake = snakeData{
-		PointData:   curPos,
-		Length:      1,
+	CurrentGameSettings = gameSettings{
+		GameStart:   false,
+		GameReset:   false,
 		MapSettings: CurrentMapSettings,
+	}
+
+	CurrentSnake = snakeData{
+		PointData: curPos,
+		Length:    1,
+		Death:     false,
 	}
 
 	CurrentWay = "right"
@@ -107,6 +114,9 @@ func postChangeGameSettings(c *gin.Context) {
 func getCurrentPosition(c *gin.Context) {
 	if CurrentGameSettings.GameStart {
 		CurrentSnake.changePosition()
+
+		CurrentSnake.actualStatus()
+		CurrentGameSettings.GameStart = !CurrentSnake.Death
 	}
 	c.IndentedJSON(http.StatusOK, CurrentSnake)
 }
@@ -121,6 +131,21 @@ func changeWay(c *gin.Context) {
 	CurrentWay = newPosition.SideName
 
 	c.IndentedJSON(http.StatusOK, CurrentWay)
+}
+
+func (s *snakeData) actualStatus() {
+	var headX, headY int
+	for id, value := range s.PointData {
+		if id == 0 {
+			headX = value.X
+			headY = value.Y
+		} else {
+			if headX == value.X && headY == value.Y {
+				s.Death = true
+				break
+			}
+		}
+	}
 }
 
 func (s *snakeData) changePosition() {

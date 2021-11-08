@@ -5,6 +5,13 @@ var TimerId
 var c = document.getElementById("myCanvas");
 var ctx = c.getContext("2d");
 
+var MapSettings = {
+    "maxX": 0,
+    "maxY": 0,
+    "objX": 0,
+    "objY": 0
+}
+
 function postPosition(positionName = '') {
     postData = {
         "position": positionName
@@ -25,6 +32,16 @@ function changeGameSettings(postData = {}) {
     fetch(SERVER_PATH + "/changeGameSettings", {
         method: 'post',
         body: JSON.stringify(postData)
+    })
+    .then(function (response) {
+        return response.json()
+    })
+    .then(function (data) {
+        console.log('data', data)
+        MapSettings.maxX = data.mapSettings.maxX
+        MapSettings.maxY = data.mapSettings.maxY
+        MapSettings.objX = data.mapSettings.objX
+        MapSettings.objY = data.mapSettings.objY
     });
 }
 
@@ -53,6 +70,9 @@ function resetGame() {
         "gameReset": true
     }
     changeGameSettings(postData)
+    ctx.clearRect(0, 0, 
+        MapSettings.maxX, 
+        MapSettings.maxY)
     clearTimeout(TimerId);
 }
 
@@ -65,15 +85,20 @@ function getCurrentPosition() {
     })
     .then(function (data) {
         console.log('data', data)
-        ctx.fillStyle = "green";
+        if (data.Death == true) {
+            ctx.fillStyle = "red";
+            clearTimeout(TimerId);
+        } else {
+            ctx.fillStyle = "green";
+        }
         ctx.clearRect(0, 0, 
-                    data.mapSettings.maxX, 
-                    data.mapSettings.maxY)
+                    MapSettings.maxX, 
+                    MapSettings.maxY)
         for (let i = 0; i < data.positionPoint.length; i++) {
-            ctx.fillRect(data.positionPoint[i].x * data.mapSettings.objX, 
-                         data.positionPoint[i].y * data.mapSettings.objY, 
-                         data.mapSettings.objX, 
-                         data.mapSettings.objY)
+            ctx.fillRect(data.positionPoint[i].x * MapSettings.objX, 
+                         data.positionPoint[i].y * MapSettings.objY, 
+                         MapSettings.objX, 
+                         MapSettings.objY)
         }
     });
 }       
