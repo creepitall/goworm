@@ -64,7 +64,6 @@ func main() {
 }
 
 func getRequestChunk(c *gin.Context) {
-	//go CurrentSnake.changeLength()
 	CurrentSnake.getChunk()
 
 	c.IndentedJSON(http.StatusOK, CurrentSnake)
