@@ -1,145 +1,68 @@
-const SERVER_PATH = "http://localhost:8080"
+const SERVER_PATH = "localhost:8080"
 
-var GameTimerId 
-var ChunkTimerId
+const _width = 640
+const _height = 480
+const _objWidth = 40
+const _objHeight = 40
 
-var c = document.getElementById("myCanvas");
-var ctx = c.getContext("2d");
+window.onload = function () {
+    var conn;
 
-var MapSettings = {
-    "maxX": 0,
-    "maxY": 0,
-    "objX": 0,
-    "objY": 0
-}
+    var c = document.getElementById("myCanvas");
+    var ctx = c.getContext("2d");
 
-function postPosition(positionName = '') {
-    postData = {
-        "position": positionName
-    }
-    fetch(SERVER_PATH + "/currentWay", {
-        method: 'post',
-        body: JSON.stringify(postData)
-    });
-}
-
-function getAddTail() {
-    fetch(SERVER_PATH + "/addTail", {
-        method: 'get',
-    })
-}
-
-function changeGameSettings(postData = {}) {
-    fetch(SERVER_PATH + "/changeGameSettings", {
-        method: 'post',
-        body: JSON.stringify(postData)
-    })
-    .then(function (response) {
-        return response.json()
-    })
-    .then(function (data) {
-        console.log('data', data)
-        MapSettings.maxX = data.mapSettings.maxX
-        MapSettings.maxY = data.mapSettings.maxY
-        MapSettings.objX = data.mapSettings.objX
-        MapSettings.objY = data.mapSettings.objY
-    });
-}
-
-function stopAllTimers() {
-    clearTimeout(GameTimerId);
-    clearTimeout(ChunkTimerId);
-}
-
-function startGame() {
-    stopAllTimers()
-    postData = {
-        "gameStart": true,
-        "gameReset": false
-    }
-    changeGameSettings(postData)
-    GameTimerId = setInterval(() => getCurrentPosition(), 500);
-    ChunkTimerId = setInterval(() => requestChunk(), 7000);
-}
-
-function stopGame() {
-    postData = {
-        "gameStart": false,
-        "gameReset": false
-    }
-    changeGameSettings(postData)
-    stopAllTimers()
-}
-
-function resetGame() {
-    postData = {
-        "gameStart": false,
-        "gameReset": true
-    }
-    changeGameSettings(postData)
-    ctx.clearRect(0, 0, 
-        MapSettings.maxX, 
-        MapSettings.maxY)
-    stopAllTimers()
-}
-
-function requestChunk() {
-    fetch(SERVER_PATH + "/requestChunk", {
-        method: 'get',
-    })
-}
-
-function getCurrentPosition() {
-    fetch(SERVER_PATH + "/currentPosition", {
-        method: 'get',
-    })
-    .then(function (response) {
-        return response.json()
-    })
-    .then(function (data) {
-        console.log('data', data)
-        if (data.Death == true) {
-            ctx.fillStyle = "red";
-            stopAllTimers()
-        } else {
-            ctx.fillStyle = "green";
+    function Send(message) {
+        if (!conn) {
+            return false;
         }
-        ctx.clearRect(0, 0, 
-                    MapSettings.maxX, 
-                    MapSettings.maxY)
-        ctx.beginPath();              
-        for (let i = 0; i < data.positionPoint.length; i++) {
-            ctx.fillRect(data.positionPoint[i].x * MapSettings.objX, 
-                         data.positionPoint[i].y * MapSettings.objY, 
-                         MapSettings.objX, 
-                         MapSettings.objY)
+        if (!message) {
+            return false;
         }
-        ctx.closePath();
-        ctx.fillStyle = "blue";
-        for (let i = 0; i < data.chunkPoint.length; i++) {         
-            ctx.fillRect(data.chunkPoint[i].x * MapSettings.objX, 
-                         data.chunkPoint[i].y * MapSettings.objY, 
-                         MapSettings.objX, 
-                         MapSettings.objY)              
-        }    
-    });
-}       
-
-function moveRect(e){
-    switch(e.key){  
-        case "ArrowLeft":  // если нажата клавиша влево
-            postPosition('left')
-            break;
-        case "ArrowUp":   // если нажата клавиша вверх
-            postPosition('up')
-            break;
-        case "ArrowRight":   // если нажата клавиша вправо
-            postPosition('right')
-            break;
-        case "ArrowDown":   // если нажата клавиша вниз
-            postPosition('down')
-            break;
+        conn.send(message);
+        return false;
     }
-}
- 
-addEventListener("keydown", moveRect);
+
+    if (window["WebSocket"]) {
+        conn = new WebSocket("ws://" + SERVER_PATH + "/ws");
+        conn.onclose = function (evt) {};
+        conn.onmessage = function (evt) {
+            var messages = evt.data.split('\n');
+            for (var i = 0; i < messages.length; i++) {
+                var data = JSON.parse(messages[i]);
+                console.log(data)
+                ctx.clearRect(0, 0, _width, _height)
+
+                ctx.beginPath();
+                ctx.fillStyle = "green";
+                for (let i = 0; i < data.positionPoint.length; i++) {
+                    ctx.fillRect(data.positionPoint[i].X * _objWidth,
+                                data.positionPoint[i].Y * _objHeight,
+                                _objWidth, _objHeight)
+                }
+                ctx.closePath();
+            }
+        };
+    } else {
+        var item = document.createElement("div");
+        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+    }
+
+    function moveRect(e){
+        switch(e.key){
+            case "ArrowLeft": 
+                Send('left')
+                break;
+            case "ArrowUp":   
+                Send('up')
+                break;
+            case "ArrowRight":   
+                Send('right')
+                break;
+            case "ArrowDown":
+                Send('down')
+                break;
+        }
+    }
+
+    addEventListener("keydown", moveRect);
+};
