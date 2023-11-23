@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/creepitall/goworm/internal/app/game"
@@ -27,10 +26,6 @@ func New() *Runner {
 }
 
 func (r *Runner) Run() {
-	//t := time.NewTicker(1 * time.Second)
-
-	// defer func() { t.Stop() }()
-
 	go func() {
 		for _ = range r.t.C {
 			r.Add([]byte(r.Game.GetWay()))
@@ -38,8 +33,6 @@ func (r *Runner) Run() {
 	}()
 
 	for {
-		fmt.Println("were here")
-
 		way := r.Game.GetWay()
 
 		value, ok := <-r.in
@@ -50,21 +43,6 @@ func (r *Runner) Run() {
 
 		r.out <- r.Game.Conversion(way)
 	}
-
-	// go func() {
-	// 	for {
-	// 		var way models.Way
-	// 		select {
-	// 		case value := <-r.in:
-	// 			way = models.GetWayFromString(string(value))
-	// 			r.Game.ChangeWay(way)
-	// 		case <-t.C:
-	// 			way = r.Game.GetWay()
-	// 		}
-
-	// 		r.out <- r.Game.Conversion(way)
-	// 	}
-	// }()
 }
 
 func (r *Runner) Add(b []byte) {

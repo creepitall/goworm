@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -65,7 +64,6 @@ func (c *Server) writePump() {
 			if err != nil {
 				return
 			}
-			fmt.Printf("write: %s \r\n", string(message))
 			w.Write(message)
 
 			if err := w.Close(); err != nil {
