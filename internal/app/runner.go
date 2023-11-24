@@ -38,12 +38,9 @@ func (r *Runner) Run() {
 			return
 		case value := <-r.in:
 			way := models.GetWayFromString(string(value))
-			if !r.Game.GetWay().IsCrossed(way) {
-				r.Game.ChangeWay(way)
-			}
+			r.Game.ChangeWay(way)
 		case <-t.C:
-			way := r.Game.GetWay()
-			r.out <- r.Game.Conversion(way)
+			r.out <- r.Game.Conversion()
 		}
 	}
 }

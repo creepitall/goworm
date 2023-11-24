@@ -30,6 +30,11 @@ func (p Position) Change(w Way) Position {
 	case Down:
 		y = p.Y + 1
 	}
+
+	return Position{}.Fill(x, y)
+}
+
+func (p Position) Fill(x, y int) Position {
 	return Position{
 		X:  x,
 		Y:  y,

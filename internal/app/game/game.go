@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/creepitall/goworm/internal/app/apple"
+	"github.com/creepitall/goworm/internal/app/area"
 	"github.com/creepitall/goworm/internal/app/worm"
 
 	"github.com/creepitall/goworm/internal/models"
@@ -12,51 +13,45 @@ import (
 
 type Worm interface {
 	Add(way models.Way)
-	Change(way models.Way)
+	Change(way models.Way) bool
 	Positions() models.Positions
 	GetHead() models.Position
 }
 
 type Apple interface {
-	Add(x, y int)
+	Add(models.Positions)
 	Positions() models.Positions
-	Drop(p models.Positions)
 	IsCrossed(p models.Position) bool
 }
 
 type Game struct {
 	Worm  Worm
-	Map   *Map
 	Apple Apple
 	Way   models.Way
 	Death chan bool
 }
 
 func New() *Game {
-	m := Map{}
+	area := area.New(640, 480)
 	return &Game{
-		Worm:  worm.New(),
-		Map:   m.Init(640, 480),
-		Apple: apple.New(),
+		Worm:  worm.New(area),
+		Apple: apple.New(area),
 		Death: make(chan bool),
 		Way:   models.Right,
 	}
 }
 
-func (g *Game) Conversion(way models.Way) []byte {
-	g.Worm.Change(way)
-
-	if g.Map.IsOutside(g.Worm.GetHead()) {
+func (g *Game) Conversion() []byte {
+	if !g.Worm.Change(g.Way) {
 		fmt.Println("death")
 		g.Death <- true
 	}
 
 	if g.Apple.IsCrossed(g.Worm.GetHead()) {
-		g.Worm.Add(way)
+		g.Worm.Add(g.Way)
 	}
 
-	g.Apple.Add(g.Map.Get())
-	g.Apple.Drop(g.Worm.Positions())
+	g.Apple.Add(g.Worm.Positions())
 
 	return g.toByte()
 }
@@ -82,9 +77,7 @@ func (g Game) IsDeath() chan bool {
 }
 
 func (g *Game) ChangeWay(way models.Way) {
-	g.Way = way
-}
-
-func (g *Game) GetWay() models.Way {
-	return g.Way
+	if !g.Way.IsCrossed(way) {
+		g.Way = way
+	}
 }

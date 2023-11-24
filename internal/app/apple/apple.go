@@ -2,26 +2,37 @@ package apple
 
 import (
 	"math/rand"
-	"strconv"
-	"strings"
 
 	"github.com/creepitall/goworm/internal/models"
 )
 
+type Area interface {
+	Get() (int, int)
+}
+
 type Apple struct {
 	positions models.PositionsM
 	r         *rand.Rand
+	area      Area
+	limit     int
 }
 
-func New() *Apple {
+func New(area Area) *Apple {
 	return &Apple{
 		positions: make(models.PositionsM, 0),
 		r:         rand.New(rand.NewSource(99)),
+		area:      area,
+		limit:     3,
 	}
 }
 
-func (a *Apple) Add(x, y int) {
-	if len(a.positions) == 3 {
+func (a *Apple) Add(p models.Positions) {
+	a.add()
+	a.drop(p)
+}
+
+func (a *Apple) add() {
+	if len(a.positions) == a.limit {
 		return
 	}
 
@@ -29,14 +40,14 @@ func (a *Apple) Add(x, y int) {
 		return a.r.Intn(v)
 	}
 
-	xx := r(x)
-	yy := r(y)
-	xy := strings.Join([]string{strconv.Itoa(xx), strconv.Itoa(yy)}, "_")
+	x, y := a.area.Get()
 
-	a.positions[xy] = models.Position{X: xx, Y: yy, XY: xy}
+	pos := models.Position{}.Fill(r(x), r(y))
+
+	a.positions[pos.XY] = pos
 }
 
-func (a *Apple) Drop(p models.Positions) {
+func (a *Apple) drop(p models.Positions) {
 	toDrop := make([]string, 0, len(p))
 	for _, v := range p {
 		if _, ok := a.positions[v.XY]; ok {
