@@ -10,7 +10,6 @@ import (
 
 type Runner struct {
 	Game *game.Game
-	t    *time.Ticker
 	in   chan []byte
 	out  chan []byte
 }
@@ -19,29 +18,31 @@ func New() *Runner {
 	g := game.New()
 
 	return &Runner{Game: g,
-		t:   time.NewTicker(2 * time.Second),
 		in:  make(chan []byte, 100),
 		out: make(chan []byte, 100),
 	}
 }
 
 func (r *Runner) Run() {
-	go func() {
-		for _ = range r.t.C {
-			r.Add([]byte(r.Game.GetWay()))
-		}
+	t := time.NewTicker(1 * time.Second)
+
+	defer func() {
+		t.Stop()
+		close(r.in)
+		close(r.out)
 	}()
 
 	for {
 		way := r.Game.GetWay()
-
-		value, ok := <-r.in
-		if ok {
+		select {
+		case <-r.Game.IsDeath():
+			return
+		case value := <-r.in:
 			way = models.GetWayFromString(string(value))
 			r.Game.ChangeWay(way)
+		case <-t.C:
+			r.out <- r.Game.Conversion(way)
 		}
-
-		r.out <- r.Game.Conversion(way)
 	}
 }
 

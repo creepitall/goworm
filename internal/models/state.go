@@ -46,21 +46,6 @@ const (
 	Down  Way = "down"
 )
 
-func (w Way) Reverse() Way {
-	switch w {
-	case Right:
-		return Left
-	case Left:
-		return Right
-	case Up:
-		return Down
-	case Down:
-		return Up
-	default:
-		return Up
-	}
-}
-
 func GetWayFromString(s string) Way {
 	switch s {
 	case "right":

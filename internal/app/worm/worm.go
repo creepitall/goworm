@@ -27,6 +27,10 @@ func (w *Worm) Add(way models.Way) {
 	w.positions = append(w.positions, w.positions[len(w.positions)-1].Change(way))
 }
 
+func (w Worm) GetHead() models.Position {
+	return w.positions[len(w.positions)-1]
+}
+
 func (w Worm) Positions() models.Positions {
 	return w.positions
 }
