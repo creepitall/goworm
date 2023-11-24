@@ -24,7 +24,7 @@ func New() *Runner {
 }
 
 func (r *Runner) Run() {
-	t := time.NewTicker(1 * time.Second)
+	t := time.NewTicker(500 * time.Millisecond)
 
 	defer func() {
 		t.Stop()
@@ -33,14 +33,16 @@ func (r *Runner) Run() {
 	}()
 
 	for {
-		way := r.Game.GetWay()
 		select {
 		case <-r.Game.IsDeath():
 			return
 		case value := <-r.in:
-			way = models.GetWayFromString(string(value))
-			r.Game.ChangeWay(way)
+			way := models.GetWayFromString(string(value))
+			if !r.Game.GetWay().IsCrossed(way) {
+				r.Game.ChangeWay(way)
+			}
 		case <-t.C:
+			way := r.Game.GetWay()
 			r.out <- r.Game.Conversion(way)
 		}
 	}

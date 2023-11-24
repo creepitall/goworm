@@ -40,6 +40,13 @@ window.onload = function () {
                                 _objWidth, _objHeight)
                 }
                 ctx.closePath();
+
+                ctx.fillStyle = "blue";
+                for (let i = 0; i < data.applePoint.length; i++) {         
+                    ctx.fillRect(data.applePoint[i].X * _objWidth, 
+                                data.applePoint[i].Y * _objHeight, 
+                                _objWidth, _objHeight)              
+                }  
             }
         };
     } else {

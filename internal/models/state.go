@@ -11,6 +11,8 @@ type Position struct {
 	XY string
 }
 
+type PositionsM map[string]Position
+
 func (p Position) Get() (int, int) {
 	return p.X, p.Y
 }
@@ -45,6 +47,25 @@ const (
 	Up    Way = "up"
 	Down  Way = "down"
 )
+
+func (w Way) IsCrossed(new Way) bool {
+	return w.reverse() == new
+}
+
+func (w Way) reverse() Way {
+	switch w {
+	case Right:
+		return Left
+	case Left:
+		return Right
+	case Up:
+		return Down
+	case Down:
+		return Up
+	default:
+		return Up
+	}
+}
 
 func GetWayFromString(s string) Way {
 	switch s {

@@ -27,3 +27,7 @@ func (m Map) IsOutside(p models.Position) bool {
 	}
 	return false
 }
+
+func (m Map) Get() (int, int) {
+	return m.X, m.Y
+}
