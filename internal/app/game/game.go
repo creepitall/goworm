@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/creepitall/goworm/internal/app/apple"
 	"github.com/creepitall/goworm/internal/app/area"
@@ -29,6 +30,7 @@ type Game struct {
 	Apple Apple
 	Way   models.Way
 	Death chan bool
+	mu    sync.RWMutex
 }
 
 func New() *Game {
@@ -42,6 +44,9 @@ func New() *Game {
 }
 
 func (g *Game) Conversion() []byte {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
 	if !g.Worm.Change(g.Way) {
 		fmt.Println("death")
 		g.Death <- true
@@ -56,7 +61,7 @@ func (g *Game) Conversion() []byte {
 	return g.toByte()
 }
 
-func (g Game) toByte() []byte {
+func (g *Game) toByte() []byte {
 	type Out struct {
 		PositionPoint models.Positions `json:"positionPoint"`
 		ApplePoint    models.Positions `json:"applePoint"`
@@ -72,11 +77,14 @@ func (g Game) toByte() []byte {
 	return b
 }
 
-func (g Game) IsDeath() chan bool {
+func (g *Game) IsDeath() chan bool {
 	return g.Death
 }
 
 func (g *Game) ChangeWay(way models.Way) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if !g.Way.IsCrossed(way) {
 		g.Way = way
 	}
