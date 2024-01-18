@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/creepitall/goworm/internal/app/apple"
@@ -12,34 +13,43 @@ import (
 	"github.com/creepitall/goworm/internal/models"
 )
 
-type Worm interface {
-	Add(way models.Way)
-	Change(way models.Way) bool
-	Positions() models.Positions
-	GetHead() models.Position
+type areaiface interface {
+	IsOutside(worm models.Position) bool
+	MakeApple(apples, worm models.Positions) models.Position
 }
 
-type Apple interface {
-	Add(models.Positions)
+type wormiface interface {
+	Add(way models.Way)
+	Change(way models.Way)
 	Positions() models.Positions
-	IsCrossed(p models.Position) bool
+	GetHead() models.Position
+	IsCrossed() bool
+}
+
+type appleiface interface {
+	Add(p models.Position)
+	Positions() models.Positions
+	IsCrossed(worm models.Position) bool
+	IsCanAdd() bool
 }
 
 type Game struct {
-	Worm  Worm
-	Apple Apple
+	area  areaiface
+	worm  wormiface
+	apple appleiface
 	Way   models.Way
-	Death chan bool
+	Exit  chan bool
 	mu    sync.RWMutex
 }
 
 func New() *Game {
 	area := area.New(640, 480)
 	return &Game{
-		Worm:  worm.New(area),
-		Apple: apple.New(area),
-		Death: make(chan bool),
-		Way:   models.Right,
+		area:  area,
+		worm:  worm.New(),
+		apple: apple.New(),
+		Exit:  make(chan bool),
+		Way:   models.Stop,
 	}
 }
 
@@ -47,38 +57,27 @@ func (g *Game) Conversion() []byte {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	if !g.Worm.Change(g.Way) {
+	log.Print(g.worm.Positions())
+
+	g.worm.Change(g.Way)
+	switch {
+	case g.area.IsOutside(g.worm.GetHead()), g.worm.IsCrossed():
 		fmt.Println("death")
-		g.Death <- true
+		g.Exit <- true
 	}
-
-	if g.Apple.IsCrossed(g.Worm.GetHead()) {
-		g.Worm.Add(g.Way)
+	if g.apple.IsCrossed(g.worm.GetHead()) {
+		g.worm.Add(g.Way)
 	}
-
-	g.Apple.Add(g.Worm.Positions())
+	if g.apple.IsCanAdd() {
+		apple := g.area.MakeApple(g.apple.Positions(), g.worm.Positions())
+		g.apple.Add(apple)
+	}
 
 	return g.toByte()
 }
 
-func (g *Game) toByte() []byte {
-	type Out struct {
-		PositionPoint models.Positions `json:"positionPoint"`
-		ApplePoint    models.Positions `json:"applePoint"`
-	}
-
-	out := Out{
-		PositionPoint: g.Worm.Positions(),
-		ApplePoint:    g.Apple.Positions(),
-	}
-
-	b, _ := json.Marshal(out)
-
-	return b
-}
-
-func (g *Game) IsDeath() chan bool {
-	return g.Death
+func (g *Game) IsExit() chan bool {
+	return g.Exit
 }
 
 func (g *Game) ChangeWay(way models.Way) {
@@ -88,4 +87,20 @@ func (g *Game) ChangeWay(way models.Way) {
 	if !g.Way.IsCrossed(way) {
 		g.Way = way
 	}
+}
+
+func (g *Game) toByte() []byte {
+	type Out struct {
+		PositionPoint models.Positions `json:"positionPoint"`
+		ApplePoint    models.Positions `json:"applePoint"`
+	}
+
+	out := Out{
+		PositionPoint: g.worm.Positions(),
+		ApplePoint:    g.apple.Positions(),
+	}
+
+	b, _ := json.Marshal(out)
+
+	return b
 }

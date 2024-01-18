@@ -43,7 +43,6 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeFile(w, r, "./web/index.html")
-
 }
 
 func serveJs(w http.ResponseWriter, r *http.Request) {

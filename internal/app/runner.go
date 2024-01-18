@@ -24,7 +24,7 @@ func New() *Runner {
 }
 
 func (r *Runner) Run() {
-	t := time.NewTicker(500 * time.Millisecond)
+	t := time.NewTicker(1000 * time.Millisecond)
 
 	defer func() {
 		t.Stop()
@@ -34,7 +34,7 @@ func (r *Runner) Run() {
 
 	for {
 		select {
-		case <-r.Game.IsDeath():
+		case <-r.Game.IsExit():
 			return
 		case value := <-r.in:
 			way := models.GetWayFromString(string(value))

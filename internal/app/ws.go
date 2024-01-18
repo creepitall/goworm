@@ -19,12 +19,17 @@ var upgrader = websocket.Upgrader{
 }
 
 func ServeWs(runner *Runner, w http.ResponseWriter, r *http.Request) {
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	srv := &Server{runner: runner, conn: conn, send: make(chan []byte, 256)}
+	srv := &Server{
+		runner: runner,
+		conn:   conn,
+		send:   make(chan []byte, 256),
+	}
 
 	go srv.readPump()
 	go srv.writePump()
@@ -40,6 +45,7 @@ func (c *Server) readPump() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
+			c.runner.Add([]byte("exit"))
 			break
 		}
 
@@ -67,6 +73,7 @@ func (c *Server) writePump() {
 			w.Write(message)
 
 			if err := w.Close(); err != nil {
+				log.Print(err)
 				return
 			}
 		}

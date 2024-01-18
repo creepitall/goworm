@@ -1,17 +1,9 @@
 package models
 
-import (
-	"strconv"
-	"strings"
-)
-
 type Position struct {
-	X  int
-	Y  int
-	XY string
+	X int
+	Y int
 }
-
-type PositionsM map[string]Position
 
 func (p Position) Get() (int, int) {
 	return p.X, p.Y
@@ -31,15 +23,7 @@ func (p Position) Change(w Way) Position {
 		y = p.Y + 1
 	}
 
-	return Position{}.Fill(x, y)
-}
-
-func (p Position) Fill(x, y int) Position {
-	return Position{
-		X:  x,
-		Y:  y,
-		XY: strings.Join([]string{strconv.Itoa(x), strconv.Itoa(y)}, "_"),
-	}
+	return Position{X: x, Y: y}
 }
 
 type Positions []Position
@@ -51,6 +35,7 @@ const (
 	Left  Way = "left"
 	Up    Way = "up"
 	Down  Way = "down"
+	Stop  Way = "stop"
 )
 
 func (w Way) IsCrossed(new Way) bool {
@@ -68,7 +53,7 @@ func (w Way) reverse() Way {
 	case Down:
 		return Up
 	default:
-		return Up
+		return Stop
 	}
 }
 
@@ -83,6 +68,6 @@ func GetWayFromString(s string) Way {
 	case "down":
 		return Down
 	default:
-		return Up
+		return Stop
 	}
 }

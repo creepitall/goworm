@@ -22,6 +22,20 @@ window.onload = function () {
         return false;
     }
 
+    function FillText(ctx, x, y) {
+        ctx.font = "14px Arial";
+        ctx.fillStyle = "white";
+        pos = x + ',' + y           
+        ctx.fillText(pos, x * _objWidth + 5, y * _objHeight + 20);  
+    }
+
+    function FillRect(ctx, x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * _objWidth,
+                     y * _objHeight,
+                    _objWidth, _objHeight)    
+    }
+
     if (window["WebSocket"]) {
         conn = new WebSocket("ws://" + SERVER_PATH + "/ws");
         conn.onclose = function (evt) {};
@@ -33,19 +47,15 @@ window.onload = function () {
                 ctx.clearRect(0, 0, _width, _height)
 
                 ctx.beginPath();
-                ctx.fillStyle = "green";
                 for (let i = 0; i < data.positionPoint.length; i++) {
-                    ctx.fillRect(data.positionPoint[i].X * _objWidth,
-                                data.positionPoint[i].Y * _objHeight,
-                                _objWidth, _objHeight)
+                    FillRect(ctx, data.positionPoint[i].X, data.positionPoint[i].Y, "green")
+                    FillText(ctx, data.positionPoint[i].X, data.positionPoint[i].Y)                  
                 }
                 ctx.closePath();
 
-                ctx.fillStyle = "blue";
-                for (let i = 0; i < data.applePoint.length; i++) {         
-                    ctx.fillRect(data.applePoint[i].X * _objWidth, 
-                                data.applePoint[i].Y * _objHeight, 
-                                _objWidth, _objHeight)              
+                for (let i = 0; i < data.applePoint.length; i++) { 
+                    FillRect(ctx, data.applePoint[i].X, data.applePoint[i].Y, "red")     
+                    FillText(ctx, data.applePoint[i].X, data.applePoint[i].Y)                                    
                 }  
             }
         };
